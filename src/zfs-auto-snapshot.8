@@ -52,6 +52,11 @@ Send zfs full backup to \fIhost\fR (or \fIip address\fR).
 \fB\-\-send\-incr\fR=\fIhost\fR
 Send zfs incremental backup to \fIhost\fR (or \fIip address\fR).
 .TP
+\fB\-\-send\-fallback\fR
+Allow to fallback from incremental to full snapshot replication.
+.sp
+This implies \fI-R\fR to \fBzfs send\fR and \fI-F\fR to \fBzfs receive\fR.
+.TP
 \fB\-\-send\-opts\fR=\fIOPTS\fR
 Option(s) passed to 'zfs send'.
 .TP
