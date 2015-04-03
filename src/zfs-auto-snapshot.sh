@@ -38,6 +38,7 @@ opt_send_type=''
 opt_send_host=''
 opt_recv_pool=''
 opt_send_opts=''
+opt_send_only=''
 opt_recv_opts=''
 opt_send_ssh_opts=''
 opt_send_mbuf_opts=''
@@ -60,7 +61,7 @@ WARNING_COUNT='0'
 
 # Other global variables.
 SNAPSHOTS_OLD=''
-
+SNAPS_DONE=''
 
 print_usage ()
 {
@@ -84,6 +85,7 @@ print_usage ()
       --send-ssh-opts   Option(s) passed to 'ssh'.
       --send-mbuf-opts  Use mbuffer (with these options) between 'zfs send'
                         and 'ssh <host> zfs receive'.
+      --send-only       Only send the the most recent snapshot
       --sep=CHAR        Use CHAR to separate date stamps in snapshot names.
   -g, --syslog          Write messages into the system log.
   -r, --recursive       Snapshot named filesystem and all descendants.
@@ -175,11 +177,9 @@ do_snapshots () # properties, flags, snapname, oldglob, [targets...]
 	# global WARNING_COUNT
 	# global SNAPSHOTS_OLD
 
-	SNAPS_DONE=''
-
 	for ii in $TARGETS
 	do
-		if [ -n "$opt_do_snapshots" ]
+		if [ -n "$opt_do_snapshots" -a -z "$opt_send_only" ]
 		then
 			if [ "$opt_pre_snapshot" != "" ]
 			then
@@ -195,6 +195,21 @@ $ii@$NAME"
 				WARNING_COUNT=$(( $WARNING_COUNT + 1 ))
 				continue
 			fi 
+		fi
+
+		if [ -n "$opt_send_only" ]
+		then
+			for jj in $SNAPSHOTS_OLD
+			do
+				echo $SNAPS_DONE | grep -qv $ii
+				if [ -z "${jj#$ii@$GLOB}" -a $? -eq 0 ]
+				then
+					SNAPS_DONE="$SNAPS_DONE
+$jj"
+					echo adding $jj
+				fi
+			done
+			continue;
 		fi
 
 		# Retain at most $opt_keep number of old snapshots of this filesystem,
@@ -329,7 +344,7 @@ GETOPT=$(getopt \
   --longoptions=event:,keep:,label:,prefix:,sep: \
   --longoptions=debug,help,quiet,syslog,verbose \
   --longoptions=pre-snapshot:,post-snapshot:,destroy-only \
-  --longoptions=send-full:,send-incr:,send-opts:,recv-opts: \
+  --longoptions=send-full:,send-incr:,send-opts:,recv-opts:,send-only \
   --longoptions=send-ssh-opts:,send-mbuf-opts:,pre-send:,post-send: \
   --longoptions=send-fallback \
   --options=dnshe:l:k:p:rs:qgv \
@@ -434,6 +449,10 @@ do
 			;;
 		(--send-fallback)
 			opt_send_fallback=1
+			shift 1
+			;;
+		(--send-only)
+			opt_send_only=1
 			shift 1
 			;;
 		(--send-opts)
